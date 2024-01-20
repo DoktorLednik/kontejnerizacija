@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  mongodb:
+    build:
+      context: ./mongodb
+    volumes:
+      - app-images-volume:/data/db
+    networks:
+      - projectnetwork
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - app-images-volume:/usr/src/app/backend/images
+    networks:
+      - projectnetwork
+    restart: on-failure:5
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "4200:4200"
+    networks:
+      - projectnetwork
+
+  proxy:
+    build:
+      context: ./proxy
+    ports:
+      - "8080:8080"
+    networks:
+      - projectnetwork
+
+networks:
+  projectnetwork:
+
+volumes:
+  app-images-volume:

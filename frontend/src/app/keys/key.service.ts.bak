@@ -1,0 +1,97 @@
+import { Key } from './key.model'
+import { Injectable } from "@angular/core";
+import {HttpClient, HttpClientModule} from "@angular/common/http";
+import { Subject } from 'rxjs';
+import { map } from 'rxjs/operators';
+import {Router} from "@angular/router";
+
+@Injectable({providedIn: 'root'})
+export class KeysService {
+  private keys: Key[] = [];
+  private keysUpdated = new Subject<Key[]>();
+
+  constructor(private http: HttpClient, private router: Router) {}
+
+  getKeys() {
+    this.http.get<{message: string, keys: any }>('http://localhost:3000/api/keys')
+      .pipe(map((keyData) => {
+        return keyData.keys.map(key => {
+          return {
+            title: key.title,
+            content: key.content,
+            id: key._id,
+            imagePath: key.imagePath
+          };
+        });
+    }))
+      .subscribe(transformedKeys => {
+        this.keys = transformedKeys;
+        this.keysUpdated.next([...this.keys]);
+      });
+  }
+
+  getKeyUpdateListener() {
+    return this.keysUpdated.asObservable();
+  }
+
+  getKey(id: string) {
+    return this.http.get<{_id: string, title: string, content: string, imagePath: string}>('http://localhost:3000/api/keys/' + id);
+  }
+
+  addKey(title: string, content: string, image: File) {
+    const keyData = new FormData();
+    keyData.append('title', title);
+    keyData.append('content', content);
+    keyData.append('image', image, title)
+    this.http
+      .post<{message: string, key: Key}>('http://localhost:3000/api/keys', keyData)
+      .subscribe((responseData) => {
+        const key: Key = {id: responseData.key.id, title: title, content: content, imagePath: responseData.key.imagePath};
+      this.keys.push(key);
+      this.keysUpdated.next([...this.keys]);
+      this.router.navigate(['/']);
+    });
+  }
+
+  updateKey(id: string, title: string, content: string, image: File | string) {
+    let keyData: Key | FormData;
+    if (typeof(image) === 'object') {
+      keyData = new FormData();
+      keyData.append("id", id);
+      keyData.append("title", title);
+      keyData.append("content", content);
+      keyData.append("image", image, title);
+    } else {
+      keyData = {
+        id: id,
+        title: title,
+        content: content,
+        imagePath: image
+      };
+    }
+    this.http
+      .put('http://localhost:3000/api/keys/' + id, keyData)
+      .subscribe(response => {
+        const updatedKeys = [...this.keys]
+        const oldKeyIndex = updatedKeys.findIndex(k => k.id === id);
+        const key: Key = {
+          id: id,
+          title: title,
+          content: content,
+          imagePath: ""
+        };
+        updatedKeys[oldKeyIndex] = key;
+        this.keys = updatedKeys;
+        this.keysUpdated.next([...this.keys]);
+        this.router.navigate(['/']);
+      });
+  }
+  deleteKey(keyId: string) {
+    this.http.delete('http://localhost:3000/api/keys/' + keyId)
+      .subscribe(() => {
+        const updatedKeys = this.keys.filter(key => key.id !== keyId)
+        this.keys = updatedKeys;
+        this.keysUpdated.next([...this.keys]);
+      });
+  }
+}

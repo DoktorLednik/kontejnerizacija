@@ -1,0 +1,102 @@
+const express = require('express');
+const multer = require('multer');
+
+const Key = require("../models/key");
+
+const router = express.Router();
+
+const MIME_TYPE_MAP = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg'
+};
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const isValid = MIME_TYPE_MAP[file.mimetype];
+    let error = new Error('Invalid mime type');
+    if (isValid) {
+      error = null;
+    }
+    cb(null, "backend/images");
+  },
+  filename: (req, file, cb) => {
+    const name = file.originalname.toLowerCase().split(' ').join('-');
+    const ext = MIME_TYPE_MAP[file.mimetype];
+    cb(null, name + '-' + Date.now() + '.' + ext);
+  }
+});
+
+router.post("", multer({storage: storage}).single('image'), (req, res, next) => {
+  const url = req.protocol + '://' + req.get("host");
+  const key = new Key({
+    title: req.body.title,
+    content: req.body.content,
+    imagePath: url + "/images/" + req.file.filename
+  });
+  key.save().then(createdKey => {
+    res.status(201).json({
+      message: 'Key added.',
+      key: {
+        ...createdKey,
+        id: createdKey._id
+      }
+    });
+  });
+});
+
+router.put("/:id", multer({storage: storage}).single('image'), (req, res, next) => {
+  let imagePath = req.body.imagePath;
+  if (req.file) {
+    const url = req.protocol + '://' + req.get("host");
+    imagePath = url + "/images/" + req.file.filename
+  }
+  const key = new Key({
+    _id: req.body.id,
+    title: req.body.title,
+    content: req.body.content,
+    imagePath: imagePath
+  });
+  console.log(key);
+  Key.updateOne({_id: req.params.id}, key).then(result => {
+    res.status(200).json({message: 'Update successful.'});
+  });
+});
+
+router.get("/:id", (req, res, next) => {
+  Key.findById(req.params.id).then(key => {
+    if (key) {
+      res.status(200).json(key);
+    } else {
+      res.status(404).json({message: 'Key not found.'})
+    }
+  });
+});
+router.get('', (req, res, next) => {
+  const pageSize = +req.query.pagesize;
+  const currentPage = +req.query.page;
+  const keyQuery = Key.find();
+  let fetchedKeys;
+  if (pageSize && currentPage) {
+    keyQuery.skip(pageSize * (currentPage - 1)).limit(pageSize);
+  }
+  keyQuery.then(documents => {
+    fetchedKeys = documents;
+    return Key.count();
+    }).then(count => {
+    res.status(200).json({
+      message: 'Keys fetched succesfully.',
+      keys: fetchedKeys,
+      maxKeys: count
+  });
+  });
+});
+
+router.delete('/:id', (req, res, next) => {
+  Key.deleteOne({_id: req.params.id}).then(result => {
+    console.log(result);
+    res.status(200).json({message: "Key deleted!"});
+  });
+});
+
+module.exports = router;
