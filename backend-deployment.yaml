@@ -2,9 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    kompose.cmd: /snap/kompose/19/kompose-linux-amd64 convert -f docker-compose.yml
-    kompose.version: 1.21.0 (992df58d8)
-  creationTimestamp: null
+    kompose.cmd: kompose convert
+    kompose.version: 1.32.0 (765fde254)
   labels:
     io.kompose.service: backend
   name: backend
@@ -18,27 +17,24 @@ spec:
   template:
     metadata:
       annotations:
-        kompose.cmd: /snap/kompose/19/kompose-linux-amd64 convert -f docker-compose.yml
-        kompose.version: 1.21.0 (992df58d8)
-      creationTimestamp: null
+        kompose.cmd: kompose convert
+        kompose.version: 1.32.0 (765fde254)
       labels:
-        io.kompose.network/projectnetwork: "true"
+        io.kompose.network/kontejnerizacija-projectnetwork: "true"
         io.kompose.service: backend
     spec:
       containers:
-      - image: backend
-        imagePullPolicy: ""
-        name: backend
-        ports:
-        - containerPort: 3000
-        resources: {}
-        volumeMounts:
-        - mountPath: /usr/src/app/backend/images
-          name: app-images-volume
+        - image: localhost:5000/kontejnerizacija-backend:latest
+          name: backend
+          ports:
+            - containerPort: 3000
+              hostPort: 3000
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /usr/src/app/backend/images
+              name: app-images-volume
       restartPolicy: Always
-      serviceAccountName: ""
       volumes:
-      - name: app-images-volume
-        persistentVolumeClaim:
-          claimName: app-images-volume
-status: {}
+        - name: app-images-volume
+          persistentVolumeClaim:
+            claimName: app-images-volume

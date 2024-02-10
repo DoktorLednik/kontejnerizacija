@@ -4,6 +4,8 @@ services:
   mongodb:
     build:
       context: ./mongodb
+    ports:
+     - "27017:27017"
     volumes:
       - app-images-volume:/data/db
     networks:
