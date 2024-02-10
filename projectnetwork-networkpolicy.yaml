@@ -1,0 +1,14 @@
+apiVersion: extensions/v1beta1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: projectnetwork
+spec:
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          io.kompose.network/projectnetwork: "true"
+  podSelector:
+    matchLabels:
+      io.kompose.network/projectnetwork: "true"
